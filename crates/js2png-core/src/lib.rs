@@ -31,6 +31,9 @@ pub struct EncodeOptions<'a> {
     pub height: Option<u32>,
     /// 是否启用 deflate 压缩，默认 true
     pub compress: bool,
+    /// 过期时间（unix 秒，UTC）；`None` 表示永不过期。
+    /// 带有效期编码的 PNG 到期后，解码端（decode_png_at / WASM / CLI）将拒绝解密。
+    pub expire_at: Option<u64>,
 }
 
 impl<'a> EncodeOptions<'a> {
@@ -40,6 +43,7 @@ impl<'a> EncodeOptions<'a> {
             width: None,
             height: None,
             compress: true,
+            expire_at: None,
         }
     }
 }
@@ -50,7 +54,7 @@ pub fn encode_png(js: &[u8], opts: &EncodeOptions) -> Result<Vec<u8>> {
         // 允许，只是不加密不压缩的裸嵌入
     }
 
-    let container = container::build_container(js, opts.key, opts.compress);
+    let container = container::build_container(js, opts.key, opts.compress, opts.expire_at.unwrap_or(0));
     let payload_total = 4 + container.len(); // 4 字节负载长度 + container
     let need_pixels = ceil_div(payload_total, 3);
     let (w, h) = choose_size(need_pixels, opts.width, opts.height)?;
@@ -77,14 +81,26 @@ pub fn encode_png(js: &[u8], opts: &EncodeOptions) -> Result<Vec<u8>> {
 }
 
 /// 反向：PNG 文件字节 -> 原始 JS 源码字节
+///
+/// 兼容旧接口：不做过期检查（等价于 `decode_png_at(..., None)`）。
+/// 需要过期校验时请使用 [`decode_png_at`]。
 pub fn decode_png(png: &[u8], key: Option<&[u8]>) -> Result<Vec<u8>> {
+    decode_png_at(png, key, None)
+}
+
+/// 反向：PNG 文件字节 -> 原始 JS 源码字节（带过期检查）
+///
+/// `now`：当前时间（unix 秒）。容器带过期时间且 `now >= expire_at` 时，
+/// 在解密之前直接返回「已过期」错误，放弃解密。
+/// 传 `None` 可跳过过期检查。
+pub fn decode_png_at(png: &[u8], key: Option<&[u8]>, now: Option<u64>) -> Result<Vec<u8>> {
     let img = png_dec::decode_png_rgb(png)?;
     let rgb = &img.rgb;
     if rgb.len() < 4 {
         return Err(Error("PNG 图像过小，不包含有效负载".into()));
     }
     let payload_len = u32::from_le_bytes([rgb[0], rgb[1], rgb[2], rgb[3]]) as usize;
-    if payload_len < container::HEADER_LEN {
+    if payload_len < container::HEADER_LEN_V1 {
         return Err(Error(format!(
             "无效负载长度：{payload_len}（这不是 js2png 生成的 PNG）"
         )));
@@ -95,7 +111,7 @@ pub fn decode_png(png: &[u8], key: Option<&[u8]>) -> Result<Vec<u8>> {
             rgb.len() - 4
         )));
     }
-    let (_, data) = container::unpack_container(&rgb[4..4 + payload_len], key)?;
+    let (_, data) = container::unpack_container(&rgb[4..4 + payload_len], key, now)?;
     Ok(data)
 }
 
@@ -114,7 +130,7 @@ pub fn png_info(png: &[u8]) -> Result<PngMeta> {
         return Err(Error("PNG 图像过小，不包含有效负载".into()));
     }
     let payload_len = u32::from_le_bytes([rgb[0], rgb[1], rgb[2], rgb[3]]) as usize;
-    if payload_len < container::HEADER_LEN || 4 + payload_len > rgb.len() {
+    if payload_len < container::HEADER_LEN_V1 || 4 + payload_len > rgb.len() {
         return Err(Error("不是 js2png 生成的 PNG（负载长度非法）".into()));
     }
     let header = container::parse_header(&rgb[4..4 + payload_len])?;
@@ -184,6 +200,7 @@ mod tests {
             width: w,
             height: h,
             compress: true,
+            expire_at: None,
         };
         let png = encode_png(js, &opts).expect("encode 失败");
         // PNG 签名合法
@@ -235,6 +252,7 @@ mod tests {
             width: None,
             height: None,
             compress: true,
+            expire_at: None,
         };
         let png = encode_png(b"needle", &opts).unwrap();
         let err = decode_png(&png, Some(b"wrong")).unwrap_err();
@@ -251,6 +269,7 @@ mod tests {
             width: None,
             height: None,
             compress: true,
+            expire_at: None,
         };
         let png = encode_png(b"x", &opts).unwrap();
         let mut tampered = png.clone();
@@ -266,6 +285,7 @@ mod tests {
             width: None,
             height: None,
             compress: true,
+            expire_at: None,
         };
         let a = encode_png(b"same", &opts).unwrap();
         let b = encode_png(b"same", &opts).unwrap();
@@ -279,6 +299,7 @@ mod tests {
             width: Some(20),
             height: Some(20),
             compress: true,
+            expire_at: None,
         };
         let png = encode_png(b"meta test", &opts).unwrap();
         let info = png_info(&png).unwrap();
@@ -286,5 +307,33 @@ mod tests {
         assert!(info.header.encrypted());
         assert!(info.header.compressed());
         assert_eq!(info.header.original_len, 9);
+        assert!(!info.header.has_expiry());
+    }
+
+    #[test]
+    fn encode_with_expiry_and_decode_at() {
+        let opts = EncodeOptions {
+            key: Some(b"k"),
+            width: None,
+            height: None,
+            compress: true,
+            expire_at: Some(1_700_000_000),
+        };
+        let png = encode_png(b"expiring payload", &opts).unwrap();
+        let info = png_info(&png).unwrap();
+        assert_eq!(info.header.expire_at, 1_700_000_000);
+
+        // 过期前可解密
+        assert_eq!(
+            decode_png_at(&png, Some(b"k"), Some(1_699_999_999)).unwrap(),
+            b"expiring payload"
+        );
+        // 到期瞬间拒绝
+        assert!(decode_png_at(&png, Some(b"k"), Some(1_700_000_000)).is_err());
+        // 过期后即使密钥正确也拒绝
+        let err = decode_png_at(&png, Some(b"k"), Some(2_000_000_000)).unwrap_err();
+        assert!(err.to_string().contains("过期"));
+        // 旧接口 decode_png（now=None）不做过期检查，仍可解（兼容行为）
+        assert_eq!(decode_png(&png, Some(b"k")).unwrap(), b"expiring payload");
     }
 }

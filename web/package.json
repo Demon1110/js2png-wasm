@@ -1,0 +1,63 @@
+{
+  "name": "js2png-wasm",
+  "version": "0.1.0",
+  "description": "JS 源码加密嵌入 PNG、浏览器端 WASM 反向解密的交付运行时（含预加载 + 就绪门闩 SDK）",
+  "type": "module",
+  "main": "./js/runtime-sdk.js",
+  "module": "./js/runtime-sdk.js",
+  "types": "./js/runtime-sdk.d.ts",
+  "exports": {
+    ".": {
+      "types": "./js/runtime-sdk.d.ts",
+      "import": "./js/runtime-sdk.js",
+      "default": "./js/runtime-sdk.js"
+    },
+    "./runtime-sdk": {
+      "types": "./js/runtime-sdk.d.ts",
+      "import": "./js/runtime-sdk.js",
+      "default": "./js/runtime-sdk.js"
+    },
+    "./wasm/*": "./wasm/*",
+    "./js/*": "./js/*",
+    "./css/*": "./css/*",
+    "./assets/*": "./assets/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "js/runtime-sdk.js",
+    "js/runtime-sdk.d.ts",
+    "js/main.js",
+    "js/runtime-demo-main.js",
+    "wasm/js2png_wasm.js",
+    "wasm/js2png_wasm_bg.wasm",
+    "wasm/js2png_wasm.d.ts",
+    "wasm/js2png_wasm_bg.wasm.d.ts",
+    "css/style.css",
+    "assets/demo-app.png",
+    "index.html",
+    "runtime-demo.html",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "wasm",
+    "wasm-bindgen",
+    "rust",
+    "png",
+    "encryption",
+    "code-protection",
+    "steganography",
+    "javascript"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "prepublishOnly": "node scripts/prepublish-check.mjs"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  }
+}

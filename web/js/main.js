@@ -5,7 +5,7 @@ import init, {
   decode_png,
   decode_png_with_key,
   png_dimensions,
-} from './pkg/js2png_wasm.js';
+} from '../wasm/js2png_wasm.js';
 
 const $ = (id) => document.getElementById(id);
 

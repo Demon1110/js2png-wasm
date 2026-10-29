@@ -19,5 +19,5 @@ $root = Split-Path -Parent $PSScriptRoot
 Write-Host ""
 Write-Host "全部构建与测试通过 ✓" -ForegroundColor Green
 Write-Host "  CLI : $root\target\release\js2png-cli.exe"
-Write-Host "  WASM: $root\web\pkg\"
-Write-Host "演示页：cd $root && python -m http.server 8765，然后访问 http://localhost:8765/web/"
+Write-Host "  WASM: $root\web\wasm\"
+Write-Host "演示页：cd $root && python -m http.server 8765，然后访问 http://localhost:8765/web/index.html"

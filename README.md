@@ -37,9 +37,20 @@ js2png-wasm/
 │   │   └── src/main.rs         # encode / decode / info 三个子命令
 │   └── js2png-wasm/            # WASM 绑定（wasm-bindgen，web target）
 │       └── src/lib.rs          # decode_png / decode_png_with_key / encode_js / ...
-├── web/                        # 浏览器演示页
-│   ├── index.html / main.js / style.css
-│   └── pkg/                    # wasm-pack 构建产物（git 忽略）
+├── web/                        # npm 包根目录（可 npm publish 的标准前端结构）
+│   ├── package.json            # 包清单：入口 / exports / files / publishConfig
+│   ├── README.md / LICENSE     # npm 展示文档与许可证
+│   ├── index.html              # 演示页：编码 / 解密 / 执行
+│   ├── runtime-demo.html       # 客户集成演示：预加载 + 就绪门闩
+│   ├── css/style.css           # 样式
+│   ├── js/                     # 前端脚本（ESM）
+│   │   ├── runtime-sdk.js      # 客户侧运行时 SDK（包入口）
+│   │   ├── runtime-sdk.d.ts    # 类型声明
+│   │   ├── main.js             # 演示页逻辑
+│   │   └── runtime-demo-main.js# 客户集成演示逻辑
+│   ├── assets/demo-app.png     # 加密后的业务代码图（12×12）
+│   ├── scripts/prepublish-check.mjs  # 发布前产物自检（不随包发布）
+│   └── wasm/                   # wasm-pack 产物（git 忽略，build-wasm.ps1 生成）
 ├── examples/demo.js            # 示例业务 JS
 ├── scripts/
 │   ├── build-all.ps1           # 一键构建 + 全部测试（Windows）
@@ -129,15 +140,39 @@ js2png-cli decode dist/demo.png dist/demo.decoded.js --key "my-secret-key-2026"
 
 ```bash
 python -m http.server 8765 --directory D:\java\git\js2png-wasm
-# 浏览器打开 http://localhost:8765/web/
+# 浏览器打开 http://localhost:8765/web/index.html
+# 客户集成演示页 http://localhost:8765/web/runtime-demo.html
 ```
 
 演示页支持：JS → PNG 编码（预览 + 下载）、PNG → JS 解密（拖拽 / 选择文件）、将解密代码作为页面 `<script>` 执行并生效。执行前请确认代码可信；脚本在当前页面上下文运行。
 
+### 发布到 npm
+
+`web/` 就是包根（`package.json` 在 `web/`，`wasm/` 为产物目录），可直接发布：
+
+```bash
+# 1) 在仓库根构建 WASM 产物（输出到 web\wasm）
+pwsh -File scripts\build-wasm.ps1
+
+# 2) 进入包根发布（web/.npmrc 已把该目录的 registry 固定为官方源）
+cd web
+npm login        # 提示 Log in on https://registry.npmjs.org/（不是 npmmirror）
+npm whoami       # 确认登录的是 npmjs 账号
+npm publish      # publishConfig 也已固定 registry.npmjs.org
+```
+
+要点：
+
+- `web/.npmrc` 的 `registry=https://registry.npmjs.org/` 只对该包目录生效，用于登录/发布时覆盖全局镜像源（不影响其他项目）；
+- `publishConfig.registry` 固定为 `https://registry.npmjs.org/`，避免本机 `.npmrc` 的镜像源（如 npmmirror）把包发错地方；镜像站不支持登录与发布，不要向其登录；
+- `prepublishOnly` 会自检 `wasm/js2png_wasm_bg.wasm` 等 7 项必需文件，缺失直接终止发布；
+- 包入口 `js2png-wasm` → `js/runtime-sdk.js`；低阶接口用子路径 `js2png-wasm/wasm/js2png_wasm.js`；
+- 产物目录里 wasm-pack 自动生成的 `web/wasm/.gitignore`（内容为 `*`）已删除——npm 打包会把它当忽略规则，导致整个 wasm 目录被排除、发出去的包无法解密。
+
 ## WASM API
 
 ```ts
-// 均在 init() 完成后可用（见 web/main.js 与 scripts/smoke.mjs）
+// 均在 init() 完成后可用（见 web/js/main.js 与 scripts/smoke.mjs）
 decode_png(png: Uint8Array): string            // 解密未加密数据（仅压缩）
 decode_png_with_key(png: Uint8Array, key: string): string  // 解密带密钥数据
 encode_js(js: string): Uint8Array              // 浏览器端编码（仅压缩）

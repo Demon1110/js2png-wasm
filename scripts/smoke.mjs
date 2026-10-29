@@ -7,13 +7,13 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const pkgDir = path.resolve(here, '..', 'web', 'pkg');
+const wasmDir = path.resolve(here, '..', 'web', 'wasm');
 
 // web target 的 init 在 Node 中无法 fetch file://，直接传入 WebAssembly.Module
-const mod = await import(pathToFileURL(path.join(pkgDir, 'js2png_wasm.js')).href);
+const mod = await import(pathToFileURL(path.join(wasmDir, 'js2png_wasm.js')).href);
 const { default: init, encode_js, encode_js_with_key, decode_png, decode_png_with_key, png_dimensions } = mod;
 
-const wasmBytes = await readFile(path.join(pkgDir, 'js2png_wasm_bg.wasm'));
+const wasmBytes = await readFile(path.join(wasmDir, 'js2png_wasm_bg.wasm'));
 await init({ module_or_path: new WebAssembly.Module(wasmBytes) });
 
 let failed = 0;

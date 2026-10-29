@@ -1,8 +1,8 @@
 # Rust
 /target
 
-# wasm-pack 产物
-crates/js2png-wasm/pkg/
+# wasm-pack 产物（构建生成，输出到标准前端目录）
+web/wasm/
 
 # Node
 node_modules/
