@@ -43,6 +43,10 @@ js2png-wasm/
 ├── examples/demo.js            # 示例业务 JS
 ├── scripts/
 │   ├── build-all.ps1           # 一键构建 + 全部测试（Windows）
+│   ├── test-core.ps1           # 核心库单元测试
+│   ├── build-cli.ps1           # CLI 发布构建
+│   ├── build-wasm.ps1          # WASM 发布构建
+│   ├── smoke-wasm.ps1          # WASM 冒烟测试
 │   └── smoke.mjs               # Node 端 WASM 冒烟测试
 └── dist/                       # CLI 示例产物（demo.png 等）
 ```
@@ -91,13 +95,13 @@ js2png-wasm/
 pwsh -File scripts\build-all.ps1
 ```
 
-等价手工步骤：
+四个独立运行命令：
 
-```bash
-cargo test -p js2png-core                       # 核心库单元测试
-cargo build -p js2png-cli --release            # CLI 发布二进制
-wasm-pack build crates/js2png-wasm --target web --out-dir web\pkg --release   # WASM
-node scripts\smoke.mjs                          # WASM 冒烟测试
+```powershell
+pwsh -File scripts\test-core.ps1
+pwsh -File scripts\build-cli.ps1
+pwsh -File scripts\build-wasm.ps1
+pwsh -File scripts\smoke-wasm.ps1
 ```
 
 ### CLI 用法
