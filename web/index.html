@@ -75,11 +75,12 @@
         <span id="dec-error" class="error-text"></span>
       </div>
       <pre id="js-output" class="code-out" hidden><code></code></pre>
+      <p class="meta-text">示例页面效果：<span id="demo-effect">等待脚本运行</span></p>
       <div class="btn-group">
-        <button id="btn-run" class="btn" disabled>▶ 执行解密出的代码</button>
+        <button id="btn-run" class="btn" disabled>▶ 作为页面脚本运行</button>
       </div>
       <div id="console-out" class="console" hidden>
-        <div class="console-head">运行输出</div>
+        <div class="console-head">脚本运行日志</div>
         <pre id="console-body"></pre>
       </div>
     </section>
@@ -87,7 +88,7 @@
 
   <footer class="foot">
     安全提示：这是混淆级交付保护（防静态扫描 / 防爬取），浏览器端代码最终必须明文执行，
-    无法对抗有动机的专业逆向；密钥应与 WASM 产物分开部署。
+    无法对抗有动机的专业逆向；解密出的脚本会在当前页面上下文运行，请只运行可信代码；密钥应与 WASM 产物分开部署。
   </footer>
 
   <script type="module" src="./main.js"></script>

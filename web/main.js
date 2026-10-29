@@ -1,4 +1,4 @@
-// js2png-wasm 演示页逻辑：加载 WASM，串联编码 / 解码 / 执行
+// js2png-wasm 演示页逻辑：加载 WASM，串联编码 / 解码 / 页面脚本执行
 import init, {
   encode_js,
   encode_js_with_key,
@@ -16,10 +16,11 @@ function greet(name) {
   console.log(msg);
   return msg;
 }
-greet('World');
+document.getElementById('demo-effect').textContent = greet('World');
 `;
 
 let wasmReady = false;
+let scriptExecutionId = 0;
 
 /** 解析 PNG 头中的 IHDR 宽高（前端只读，不依赖 WASM） */
 function pngSizeFromHeader(bytes) {
@@ -152,8 +153,8 @@ async function main() {
     if (f && f.type === 'image/png') handlePngFile(f);
   });
 
-  // ---------- 执行 ----------
-  $('btn-run').addEventListener('click', () => {
+  // ---------- 作为页面脚本执行 ----------
+  $('btn-run').addEventListener('click', async () => {
     const src = $('js-output').querySelector('code').textContent;
     const consoleEl = $('console-out');
     const body = $('console-body');
@@ -166,17 +167,43 @@ async function main() {
     console.log = (...a) => lines.push(a.map(String).join(' '));
     console.error = (...a) => lines.push('[error] ' + a.map(String).join(' '));
 
+    const onRuntimeError = (event) => {
+      lines.push(`[exception] ${event.error?.stack || event.message}`);
+      event.preventDefault();
+      rejectExecution?.(new Error(event.message));
+    };
+    const onScriptError = () => rejectExecution?.(new Error('模块脚本解析或导入失败'));
+    const completionEvent = `js2png-module-complete-${++scriptExecutionId}`;
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.textContent = `${src}\n;window.dispatchEvent(new Event(${JSON.stringify(completionEvent)}));`;
+    let resolveExecution;
+    let rejectExecution;
+
     try {
-      const fn = new Function(src);
-      const ret = fn();
-      if (ret !== undefined) lines.push(`[return] ${String(ret)}`);
+      await new Promise((resolve, reject) => {
+        resolveExecution = resolve;
+        rejectExecution = reject;
+        window.addEventListener('error', onRuntimeError);
+        window.addEventListener(completionEvent, resolveExecution, { once: true });
+        script.addEventListener('error', onScriptError, { once: true });
+        document.body.appendChild(script);
+      });
     } catch (e) {
-      lines.push(`[exception] ${e?.stack || e}`);
+      if (!lines.some((line) => line.startsWith('[exception]'))) {
+        lines.push(`[exception] ${e?.stack || e}`);
+      }
     } finally {
+      script.remove();
+      window.removeEventListener('error', onRuntimeError);
+      window.removeEventListener(completionEvent, resolveExecution);
+      script.removeEventListener('error', onScriptError);
+      resolveExecution = undefined;
+      rejectExecution = undefined;
       console.log = oldLog;
       console.error = oldError;
     }
-    body.textContent = lines.join('\n') || '（无输出）';
+    body.textContent = lines.join('\n') || '脚本已在页面中运行（无 console 输出）';
   });
 }
 

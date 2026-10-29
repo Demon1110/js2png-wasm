@@ -132,7 +132,7 @@ python -m http.server 8765 --directory D:\java\git\js2png-wasm
 # 浏览器打开 http://localhost:8765/web/
 ```
 
-演示页支持：JS → PNG 编码（预览 + 下载）、PNG → JS 解密（拖拽 / 选择文件）、一键执行解密出的代码。
+演示页支持：JS → PNG 编码（预览 + 下载）、PNG → JS 解密（拖拽 / 选择文件）、将解密代码作为页面 `<script>` 执行并生效。执行前请确认代码可信；脚本在当前页面上下文运行。
 
 ## WASM API
 
