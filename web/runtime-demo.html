@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>js2png 客户集成演示：预加载 + 就绪门闩</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; background: #f5f7fb; color: #1f2937; padding: 32px 16px; }
+    .card { max-width: 720px; margin: 0 auto 16px; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; }
+    h1 { font-size: 20px; }
+    h2 { font-size: 15px; margin: 18px 0 10px; }
+    p { font-size: 14px; color: #374151; line-height: 1.7; }
+    code { background: #f3f4f6; border-radius: 4px; padding: 1px 6px; font-size: 13px; }
+    .status { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 14px; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; background: #d1d5db; flex: none; }
+    .dot.loading { background: #f59e0b; }
+    .dot.ready { background: #22c55e; }
+    .dot.failed { background: #ef4444; }
+    .btn { margin-top: 16px; padding: 10px 18px; border: 0; border-radius: 8px; background: #2563eb; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .btn:disabled { background: #93c5fd; cursor: not-allowed; }
+    .out { margin-top: 14px; background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 12px; font: 12.5px/1.6 Consolas, monospace; min-height: 44px; white-space: pre-wrap; word-break: break-all; }
+    .imgbox { width: 96px; height: 96px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: repeating-conic-gradient(#f3f4f6 0 25%, #fff 0 50%) 0 0 / 14px 14px; }
+    .imgbox img { width: 100%; height: 100%; image-rendering: pixelated; }
+    .row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+    .timeline { list-style: none; margin-top: 10px; }
+    .timeline li { position: relative; padding: 0 0 12px 22px; font-size: 13px; color: #4b5563; }
+    .timeline li::before { content: ""; position: absolute; left: 4px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: #22c55e; }
+    .timeline li:not(:last-child)::after { content: ""; position: absolute; left: 8.5px; top: 14px; width: 1px; height: 100%; background: #d1d5db; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>客户集成演示：预加载 + 就绪门闩</h1>
+    <p>模拟客户项目：页面一打开立即调用 <code>preload()</code> 预热（fetch PNG + WASM 解密），
+    业务入口用 <code>await</code> 门闩等待——保证用户点击时解密必然已完成。</p>
+
+    <div class="row">
+      <div class="imgbox"><img src="./demo-app.png" alt="加密 PNG（可正常显示）" /></div>
+      <div>
+        <p><code>demo-app.png</code>：加密后的业务代码（12×12，可正常显示）</p>
+        <div class="status">
+          <span id="dot" class="dot loading"></span>
+          <span id="status-text">正在预加载解密…</span>
+        </div>
+      </div>
+    </div>
+
+    <h2>时序验证</h2>
+    <ul class="timeline" id="timeline">
+      <li><b>页面模块执行</b>：调用 <code>preload('./demo-app.png', 'demo-key-2026')</code> 立即开始解密（不阻塞渲染）</li>
+      <li id="step-ready"><b>解密完成</b>：<code>ready</code> Promise 变为 fulfilled，业务代码常驻内存</li>
+      <li id="step-call"><b>用户调用</b>：点击按钮 <code>await ready</code> 后立即执行，零等待</li>
+    </ul>
+
+    <button id="btn-call" class="btn" disabled>调用解密出的 greet('客户')</button>
+    <div id="out" class="out">（点击按钮后显示结果）</div>
+  </div>
+
+  <div class="card">
+    <h2>客户代码（对应本项目 runtime-sdk.js）</h2>
+    <p><code>import { Js2Png, preload } from './runtime-sdk.js';</code></p>
+    <p><code>const ready = preload('./demo-app.png', 'demo-key-2026');</code> ← 页面启动即预热</p>
+    <p><code>const biz = await ready; biz.call('greet', name);</code> ← 业务入口门闩</p>
+  </div>
+
+  <script type="module" src="./runtime-demo-main.js"></script>
+</body>
+</html>
