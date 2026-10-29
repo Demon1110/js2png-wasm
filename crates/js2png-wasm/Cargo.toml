@@ -1,0 +1,13 @@
+[package]
+name = "js2png-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "js2png WASM 绑定：浏览器端对 PNG 进行反向解密还原 JS，供交付页面加载执行"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+js2png-core = { path = "../js2png-core" }
+wasm-bindgen = "0.2"

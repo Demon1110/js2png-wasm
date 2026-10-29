@@ -1,0 +1,18 @@
+# Rust
+/target
+
+# wasm-pack 产物
+crates/js2png-wasm/pkg/
+
+# Node
+node_modules/
+
+# CLI 输出
+/dist/*.png
+/dist/*.js
+
+# 编辑器
+.idea/
+dist/
+.vscode/
+*.swp

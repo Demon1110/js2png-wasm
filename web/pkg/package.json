@@ -1,0 +1,17 @@
+{
+  "name": "js2png-wasm",
+  "type": "module",
+  "description": "js2png WASM 绑定：浏览器端对 PNG 进行反向解密还原 JS，供交付页面加载执行",
+  "version": "0.1.0",
+  "license": "MIT",
+  "files": [
+    "js2png_wasm_bg.wasm",
+    "js2png_wasm.js",
+    "js2png_wasm.d.ts"
+  ],
+  "main": "js2png_wasm.js",
+  "types": "js2png_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

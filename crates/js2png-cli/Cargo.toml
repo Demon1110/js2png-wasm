@@ -1,0 +1,11 @@
+[package]
+name = "js2png-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "js2png 命令行工具：JS 文件加密为 PNG（交付端），PNG 解密还原 JS（本地验证）"
+
+[dependencies]
+js2png-core = { path = "../js2png-core" }
+
+# 刻意不引入 clap 等依赖，参数解析手写以保持产物精简

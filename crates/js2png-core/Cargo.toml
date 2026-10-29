@@ -1,0 +1,12 @@
+[package]
+name = "js2png-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "js2png 核心库：JS 源码 -> 加密嵌入 PNG / PNG -> 解密还原，纯 Rust 无 WASM 依赖"
+
+[dependencies]
+# 唯一依赖：纯 Rust 的 deflate/inflate（zlib 格式），支持 wasm32 目标
+miniz_oxide = "0.8"
+
+[dev-dependencies]
